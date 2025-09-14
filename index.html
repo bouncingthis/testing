@@ -3,135 +3,198 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bouncing Pill Logo</title>
+  <title>Bouncer – Pill Logo Accurate</title>
   <style>
     :root{
       --bg:#0b0b0b;
+      --hud-bg:rgba(0,0,0,.45);
+      --hud-fg:#fff;
+      --gap:16px;
+      --radius:16px;
+      --pill:#ffffff1f;
       --logo-size:160px;
-      --border-color:#16423b; /* etwas heller, besser sichtbar */
-      --margin:20; /* uniform margin from each wall */
+      --border-color:#0f2925;
+      --margin:20; /* margin from each wall */
     }
     *{ box-sizing:border-box }
     html,body{ height:100%; margin:0; width:100%; }
-    body{ background:var(--bg); overflow:hidden; }
-    #wrap{ position:relative; width:100vw; height:100vh; overflow:hidden }
+    body{ background:var(--bg); overflow:hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial;
+    }
+    #wrap{ position:relative; width:100%; height:100%; overflow:hidden }
+    #c{ display:block; width:100%; height:100% }
 
     .logo-wrap{ position:absolute; left:0; top:0; width:var(--logo-size); height:calc(var(--logo-size) * 0.5); will-change: transform; display:flex; align-items:center; justify-content:center; }
 
-    /* Pill logo – vollständige Rotation wie vorher */
+    /* Pill logo */
     .logo{
       width:100%; height:100%; border-radius:999px; position:relative;
+      background:linear-gradient(90deg, #4dbb74 50%, #ffffff 50%);
       border:6px solid var(--border-color);
-      background:linear-gradient(90deg, #4fd487 50%, #ffffff 50%);
       overflow:hidden;
       animation: spin 8s linear infinite;
     }
-    /* dezente Schattierungen */
-    .logo::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:50%;
-      background:linear-gradient(180deg,#60d88f 0%,#3da463 100%); }
-    .logo::after{ content:""; position:absolute; right:0; top:0; bottom:0; width:50%;
-      background:linear-gradient(180deg,#ffffff 0%,#dcdcdc 100%); }
-    .divider{ position:absolute; left:50%; top:0; bottom:0; width:5px; background:var(--border-color); transform:translateX(-50%); }
+    .logo::before{
+      content:""; position:absolute; left:0; top:0; bottom:0; width:50%;
+      background:linear-gradient(180deg,#5fd88d 0%,#3ea35d 100%);
+    }
+    .logo div{
+      content:""; position:absolute; right:0; top:0; bottom:0; width:50%;
+      background:linear-gradient(180deg,#ffffff 0%,#d6d6d6 100%);
+    }
+    .divider{
+      position:absolute; left:50%; top:0; bottom:0; width:5px;
+      background:var(--border-color);
+      transform:translateX(-50%);
+    }
 
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* HUD */
+    .hud{
+      position:absolute; top:var(--gap); left:50%; transform:translateX(-50%);
+      display:flex; flex-direction:column; align-items:center; gap:10px;
+      color:var(--hud-fg);
+      user-select:none;
+    }
+    .stats-box{
+      background:var(--hud-bg);
+      padding:10px 18px;
+      border-radius:var(--radius);
+      display:flex; flex-direction:row; gap:16px;
+    }
+    .pill{ display:flex; flex-direction:column; align-items:center; padding:6px 10px; border-radius:12px; background:var(--pill); min-width:70px }
+    .label{ opacity:.9; font-weight:600; font-size:13px; margin-bottom:4px }
+    .num{ font-variant-numeric: tabular-nums; font-weight:800; font-size:16px }
+
+    .alltime-box{
+      background:var(--hud-bg);
+      padding:12px 20px;
+      border-radius:var(--radius);
+      display:flex; flex-direction:column; align-items:center;
+    }
+    .alltime-label{ font-size:14px; font-weight:600; margin-bottom:4px; }
+    .alltime-num{ font-size:22px; font-weight:800; }
+
+    .explanation{
+      position:absolute; left:50%; bottom:20px; transform:translateX(-50%);
+      background:var(--hud-bg); color:var(--hud-fg);
+      padding:12px 18px; border-radius:var(--radius);
+      font-size:14px; line-height:1.6; text-align:left;
+      max-width:90%; user-select:none;
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .explanation b{ color:#fff }
+
+    .flash{ position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .18s ease }
+    .flash.show{ opacity:1 }
+    .hint{ position:absolute; left:50%; bottom:80px; transform:translateX(-50%); color:#fff; opacity:0; font-size:12px; transition:opacity .25s ease }
+    .paused .hint{ opacity:.9 }
   </style>
 </head>
 <body>
   <div id="wrap">
+    <canvas id="c"></canvas>
     <div id="logoWrap" class="logo-wrap">
       <div class="logo" aria-label="pill logo">
         <span class="divider"></span>
       </div>
     </div>
+
+    <div class="hud">
+      <div class="stats-box">
+        <div class="pill"><span class="label">Streak</span><span class="num" id="streak">0</span></div>
+        <div class="pill"><span class="label">Corners</span><span class="num" id="corners">0</span></div>
+        <div class="pill"><span class="label">Best</span><span class="num" id="best">0</span></div>
+      </div>
+      <div class="alltime-box">
+        <span class="alltime-label">All-Time</span>
+        <span class="alltime-num" id="all">0</span>
+      </div>
+    </div>
+
+    <div class="explanation">
+      <div><b>Streak</b>: How many times it bounced without hitting a corner</div>
+      <div><b>All-Time</b>: The total number of bounces</div>
+      <div><b>Corners</b>: How many times the logo hit a corner</div>
+      <div><b>Best</b>: The longest streak ever reached</div>
+    </div>
+
+    <div class="flash" id="flash"></div>
+    <div class="hint" id="hint">Click to resume</div>
   </div>
 
   <script>
     const Q = new URLSearchParams(location.search);
     const bg = Q.get('bg') || '#0b0b0b';
-    const speed = Math.max(40, Number(Q.get('speed') || 260)); // px/s
+    const speed = Math.max(40, Number(Q.get('speed') || 260));
     const sizePx = Math.max(32, Number(Q.get('size') || 160));
-    const margin = Math.max(0, Number(Q.get('margin') || 20)); // uniform margin
+    const margin = 20; // margin from walls
+    const flashOn = (Q.get('flash') ?? '1') === '1';
     document.documentElement.style.setProperty('--bg', bg);
     document.documentElement.style.setProperty('--logo-size', sizePx+'px');
 
-    const wrap = document.getElementById('wrap');
-    const logoWrap = document.getElementById('logoWrap');
+    const wrap=document.getElementById('wrap');
+    const canvas=document.getElementById('c');
+    const ctx=canvas.getContext('2d');
 
-    // --- physics state (center-based, rotation-proof) ---
-    const w = sizePx, h = sizePx * 0.5;
-    const ex = w * 0.5, ey = h * 0.5; // half extents
-    let cx = margin + ex + 10, cy = margin + ey + 10; // center position
-    // random initial direction, but avoid near-vertical/horizontal to prevent boring loops
-    function randAngle(){
-      let a = Math.random()*Math.PI*2;
-      // keep away from multiples of 90° by at least 5°
-      const snap = Math.PI/2, pad = (5*Math.PI/180);
-      const n = Math.round(a/snap);
-      if (Math.abs(a - n*snap) < pad) a += pad * Math.sign(a - n*snap || (Math.random()<.5?1:-1));
-      return a;
+    function resize(){
+      canvas.width=wrap.clientWidth*devicePixelRatio;
+      canvas.height=wrap.clientHeight*devicePixelRatio;
+      ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
     }
-    let ang = randAngle();
-    let vx = Math.cos(ang) * speed;
-    let vy = Math.sin(ang) * speed;
+    resize();
+    window.addEventListener('resize', resize);
 
-    let last = 0;
-    let paused = false;
+    const elStreak=document.getElementById('streak');
+    const elAll=document.getElementById('all');
+    const elCorners=document.getElementById('corners');
+    const elBest=document.getElementById('best');
 
-    // clamp inside playable area (uses center & extents)
-    function clamp(){
-      const W = wrap.clientWidth, H = wrap.clientHeight;
-      const minX = margin + ex, maxX = W - margin - ex;
-      const minY = margin + ey, maxY = H - margin - ey;
-      cx = Math.min(Math.max(cx, minX), Math.max(minX, maxX));
-      cy = Math.min(Math.max(cy, minY), Math.max(minY, maxY));
-    }
+    const logoWrap=document.getElementById('logoWrap');
 
-    new ResizeObserver(()=>{ clamp(); }).observe(wrap);
-    clamp();
+    let w=sizePx, h=sizePx*0.5;
+    let x=100, y=80; const ang=Math.random()*Math.PI*2; let vx=Math.cos(ang)*speed; let vy=Math.sin(ang)*speed;
+    let last=performance.now(); let streak=0; let allTime=0; let corners=0; let bestStreak=0;
+    let prevHitX=false, prevHitY=false; let paused=false;
+
+    const flashEl=document.getElementById('flash');
+    flashEl.style.background='radial-gradient(1000px 1000px at 50% 50%, rgba(255,255,255,.08), rgba(255,255,255,0))';
+    function flash(){ if(!flashOn) return; flashEl.classList.add('show'); clearTimeout(flash._t); flash._t=setTimeout(()=>flashEl.classList.remove('show'),120) }
+
+    function updateHUD(){ elStreak.textContent=streak; elAll.textContent=allTime; elCorners.textContent=corners; elBest.textContent=bestStreak; document.title=`Streak:${streak} All:${allTime} Corners:${corners}`; }
+    function onBounce(){ streak++; allTime++; updateHUD(); }
+    function onCorner(){ corners++; if(streak>bestStreak) bestStreak=streak; streak=0; flash(); updateHUD(); }
 
     function tick(now){
-      if (paused) return;
-      if (!last) last = now;
-      const dt = Math.min(0.05, (now - last)/1000); // cap dt to avoid tunneling
-      last = now;
-
-      const W = wrap.clientWidth, H = wrap.clientHeight;
-      if (!W || !H){ requestAnimationFrame(tick); return; }
-
-      // move by center
-      cx += vx * dt; cy += vy * dt;
-
-      // bounds with uniform margin
-      const minX = margin + ex, maxX = W - margin - ex;
-      const minY = margin + ey, maxY = H - margin - ey;
-
-      let hitX = false, hitY = false;
-      if (cx < minX){ cx = minX; vx = Math.abs(vx); hitX = true; }
-      else if (cx > maxX){ cx = maxX; vx = -Math.abs(vx); hitX = true; }
-      if (cy < minY){ cy = minY; vy = Math.abs(vy); hitY = true; }
-      else if (cy > maxY){ cy = maxY; vy = -Math.abs(vy); hitY = true; }
-
-      // tiny jitter on bounce to avoid endless straight lines
-      if (hitX || hitY){
-        const jitter = (Math.random()*2-1) * 0.02; // ±0.02 rad ≈ ±1.15°
-        const sp = Math.hypot(vx, vy);
-        let a = Math.atan2(vy, vx) + jitter;
-        vx = Math.cos(a)*sp; vy = Math.sin(a)*sp;
-      }
-
-      // draw (position wrapper by top-left)
-      const x = cx - ex, y = cy - ey;
-      logoWrap.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-
+      if(paused) return;
+      const dt=Math.min(0.05,(now-last)/1000); last=now;
+      x+=vx*dt; y+=vy*dt;
+      const W=wrap.clientWidth, H=wrap.clientHeight;
+      let hitX=false, hitY=false;
+      if(x<margin){ x=margin; vx=Math.abs(vx); hitX=true }
+      else if(x+w>W-margin){ x=W-w-margin; vx=-Math.abs(vx); hitX=true }
+      if(y<margin){ y=margin; vy=Math.abs(vy); hitY=true }
+      else if(y+h>H-margin){ y=H-h-margin; vy=-Math.abs(vy); hitY=true }
+      const newBounce=(hitX&&!prevHitX)||(hitY&&!prevHitY);
+      const isCorner=hitX&&hitY&&(!prevHitX||!prevHitY);
+      if(newBounce) onBounce();
+      if(isCorner) onCorner();
+      prevHitX=hitX; prevHitY=hitY;
+      logoWrap.style.transform=`translate(${x}px, ${y}px)`;
       requestAnimationFrame(tick);
     }
 
-    // click to pause/resume
-    wrap.addEventListener('click', () => {
-      paused = !paused;
-      if (!paused){ last = performance.now(); requestAnimationFrame(tick); }
-    });
+    function clampToBounds(){
+      const W=wrap.clientWidth, H=wrap.clientHeight;
+      if(x < margin) x = margin;
+      if(y < margin) y = margin;
+      if(x + w > W - margin) x = W - w - margin;
+      if(y + h > H - margin) y = H - h - margin;
+    }
 
+    wrap.addEventListener('click',()=>{ paused=!paused; document.body.classList.toggle('paused',paused); if(!paused){ last=performance.now(); requestAnimationFrame(tick) }});
+    clampToBounds();
     requestAnimationFrame(tick);
   </script>
 </body>
