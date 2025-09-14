@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bouncing Pill Logo</title>
+  <style>
+    :root{
+      --bg:#0b0b0b;
+      --logo-size:160px;
+      --border-color:#16423b; /* etwas heller, besser sichtbar */
+      --margin:20; /* uniform margin from each wall */
+    }
+    *{ box-sizing:border-box }
+    html,body{ height:100%; margin:0; width:100%; }
+    body{ background:var(--bg); overflow:hidden; }
+    #wrap{ position:relative; width:100vw; height:100vh; overflow:hidden }
+
+    .logo-wrap{ position:absolute; left:0; top:0; width:var(--logo-size); height:calc(var(--logo-size) * 0.5); will-change: transform; display:flex; align-items:center; justify-content:center; }
+
+    /* Pill logo – vollständige Rotation wie vorher */
+    .logo{
+      width:100%; height:100%; border-radius:999px; position:relative;
+      border:6px solid var(--border-color);
+      background:linear-gradient(90deg, #4fd487 50%, #ffffff 50%);
+      overflow:hidden;
+      animation: spin 8s linear infinite;
+    }
+    /* dezente Schattierungen */
+    .logo::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:50%;
+      background:linear-gradient(180deg,#60d88f 0%,#3da463 100%); }
+    .logo::after{ content:""; position:absolute; right:0; top:0; bottom:0; width:50%;
+      background:linear-gradient(180deg,#ffffff 0%,#dcdcdc 100%); }
+    .divider{ position:absolute; left:50%; top:0; bottom:0; width:5px; background:var(--border-color); transform:translateX(-50%); }
+
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="logoWrap" class="logo-wrap">
+      <div class="logo" aria-label="pill logo">
+        <span class="divider"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const Q = new URLSearchParams(location.search);
+    const bg = Q.get('bg') || '#0b0b0b';
+    const speed = Math.max(40, Number(Q.get('speed') || 260)); // px/s
+    const sizePx = Math.max(32, Number(Q.get('size') || 160));
+    const margin = Math.max(0, Number(Q.get('margin') || 20)); // uniform margin
+    document.documentElement.style.setProperty('--bg', bg);
+    document.documentElement.style.setProperty('--logo-size', sizePx+'px');
+
+    const wrap = document.getElementById('wrap');
+    const logoWrap = document.getElementById('logoWrap');
+
+    // --- physics state (center-based, rotation-proof) ---
+    const w = sizePx, h = sizePx * 0.5;
+    const ex = w * 0.5, ey = h * 0.5; // half extents
+    let cx = margin + ex + 10, cy = margin + ey + 10; // center position
+    // random initial direction, but avoid near-vertical/horizontal to prevent boring loops
+    function randAngle(){
+      let a = Math.random()*Math.PI*2;
+      // keep away from multiples of 90° by at least 5°
+      const snap = Math.PI/2, pad = (5*Math.PI/180);
+      const n = Math.round(a/snap);
+      if (Math.abs(a - n*snap) < pad) a += pad * Math.sign(a - n*snap || (Math.random()<.5?1:-1));
+      return a;
+    }
+    let ang = randAngle();
+    let vx = Math.cos(ang) * speed;
+    let vy = Math.sin(ang) * speed;
+
+    let last = 0;
+    let paused = false;
+
+    // clamp inside playable area (uses center & extents)
+    function clamp(){
+      const W = wrap.clientWidth, H = wrap.clientHeight;
+      const minX = margin + ex, maxX = W - margin - ex;
+      const minY = margin + ey, maxY = H - margin - ey;
+      cx = Math.min(Math.max(cx, minX), Math.max(minX, maxX));
+      cy = Math.min(Math.max(cy, minY), Math.max(minY, maxY));
+    }
+
+    new ResizeObserver(()=>{ clamp(); }).observe(wrap);
+    clamp();
+
+    function tick(now){
+      if (paused) return;
+      if (!last) last = now;
+      const dt = Math.min(0.05, (now - last)/1000); // cap dt to avoid tunneling
+      last = now;
+
+      const W = wrap.clientWidth, H = wrap.clientHeight;
+      if (!W || !H){ requestAnimationFrame(tick); return; }
+
+      // move by center
+      cx += vx * dt; cy += vy * dt;
+
+      // bounds with uniform margin
+      const minX = margin + ex, maxX = W - margin - ex;
+      const minY = margin + ey, maxY = H - margin - ey;
+
+      let hitX = false, hitY = false;
+      if (cx < minX){ cx = minX; vx = Math.abs(vx); hitX = true; }
+      else if (cx > maxX){ cx = maxX; vx = -Math.abs(vx); hitX = true; }
+      if (cy < minY){ cy = minY; vy = Math.abs(vy); hitY = true; }
+      else if (cy > maxY){ cy = maxY; vy = -Math.abs(vy); hitY = true; }
+
+      // tiny jitter on bounce to avoid endless straight lines
+      if (hitX || hitY){
+        const jitter = (Math.random()*2-1) * 0.02; // ±0.02 rad ≈ ±1.15°
+        const sp = Math.hypot(vx, vy);
+        let a = Math.atan2(vy, vx) + jitter;
+        vx = Math.cos(a)*sp; vy = Math.sin(a)*sp;
+      }
+
+      // draw (position wrapper by top-left)
+      const x = cx - ex, y = cy - ey;
+      logoWrap.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+
+      requestAnimationFrame(tick);
+    }
+
+    // click to pause/resume
+    wrap.addEventListener('click', () => {
+      paused = !paused;
+      if (!paused){ last = performance.now(); requestAnimationFrame(tick); }
+    });
+
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
